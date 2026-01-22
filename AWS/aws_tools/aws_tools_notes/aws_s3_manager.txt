@@ -1,0 +1,203 @@
+AWS_S3_MANAGER.PY
+=================================
+
+PURPOSE
+-------
+aws_s3_manager.py is a safe, CLI-based S3 operator tool. It provides visibility and controlled operations on S3 buckets while preventing accidental data exposure or destructive actions.
+
+This tool is designed for:
+- Inspecting S3 buckets
+- Performing intentional, guarded operations
+- Reducing reliance on the AWS Console for routine work
+
+This tool is NOT meant to replace:
+- Infrastructure-as-Code (Terraform / CloudFormation)
+- Complex bucket policy design
+- Automated data pipelines
+
+
+CORE PHILOSOPHY
+---------------
+- Visibility before action
+- No silent behavior
+- No implicit defaults
+- No automatic cleanup
+- Strong confirmations for irreversible actions
+- Operator intent is always explicit
+
+Friction is a feature, not a bug.
+
+
+AWS CONTEXT
+-----------
+- Uses explicit AWS profile: phase1
+- Uses AWS SDK (boto3), not AWS CLI
+- Never relies on default credentials
+- Always prints context before actions
+
+Always verify the AWS profile before proceeding.
+
+
+PHASE OVERVIEW
+--------------
+
+PHASE A — READ-ONLY INSPECTION
+------------------------------
+Command: python <path-to>aws_s3_manager.py
+
+What it does:
+- Lists all S3 buckets in the account
+- Shows key security and metadata fields
+- Makes NO changes
+
+Displayed fields per bucket:
+- Bucket name
+- Region
+- Creation timestamp
+- Public access block status
+- Approximate object count (non-recursive)
+
+Public access status meanings:
+- BLOCKED
+  → All Public Access Block settings are enabled
+  → Bucket cannot be public
+
+- PARTIAL / CUSTOM
+  → Some public-access mechanisms are allowed
+  → Bucket may or may not actually be public
+
+- NOT CONFIGURED
+  → Public Access Block is not set
+  → Higher risk, requires attention
+
+IMPORTANT:
+This phase checks ONLY the Public Access Block layer. It does NOT evaluate bucket policies or object ACLs. This phase is always safe to run.
+
+
+PHASE B — SAFE ACTIONS
+---------------------
+Supported actions:
+1. Create bucket
+2. Upload single file
+
+Commands:
+    python <path-to>aws_s3_manager.py create-bucket <bucket-name> <region>
+    python <path-to>aws_s3_manager.py upload <bucket-name> <local-file-path>
+
+Behavior:
+- Requires explicit confirmation
+- Operates on one bucket at a time
+- Does not guess regions
+- Does not overwrite objects
+- Does not change permissions
+
+Notes:
+- Bucket names must be globally unique (AWS-wide)
+- Upload uses only the file’s basename as the object key
+- No recursive uploads are supported
+
+These actions are considered low-risk and reversible.
+
+
+PHASE C — HIGH-RISK / SECURITY ACTIONS
+-------------------------------------
+
+1) DELETE BUCKET
+----------------
+Command: python <path-to>aws_s3_manager.py delete-bucket <bucket-name>
+
+Rules:
+- Bucket MUST be empty
+- Script does NOT delete objects automatically
+- Requires typing:
+      DELETE <bucket-name>
+- Any mismatch cancels the action
+
+This action is irreversible.
+
+
+2) EMPTY BUCKET
+---------------
+Command: python <path-to>aws_s3_manager.py empty-bucket <bucket-name>
+
+Rules:
+- Deletes ALL objects in the bucket
+- Used as a prerequisite for deleting a bucket
+- Requires typing: EMPTY <bucket-name>
+- Any mismatch cancels the action
+
+WARNING: This permanently destroys data.
+
+
+3) TOGGLE PUBLIC ACCESS BLOCK
+-----------------------------
+Command: python <path-to>aws_s3_manager.py toggle-public-access <bucket-name> <on|off>
+
+Meaning:
+- on  → ENABLE public access block (lockdown)
+- off → DISABLE public access block (allow public configs)
+
+IMPORTANT:
+- This does NOT make a bucket public by itself
+- It only allows or blocks the possibility of public access
+- Bucket policies and ACLs still control actual exposure
+
+Before changing:
+- Current public access block configuration is printed
+- Explicit confirmation is required
+
+
+PUBLIC ACCESS — IMPORTANT MENTAL MODEL
+-------------------------------------
+S3 public access has multiple layers:
+
+1. Public Access Block (account/bucket-level safety gate)
+2. Bucket policy (explicit permissions)
+3. Object ACLs (legacy, granular)
+
+This tool manages ONLY layer 1.
+
+BLOCKED does NOT mean “was public before”.
+NOT BLOCKED does NOT mean “is public now”.
+
+It only means whether public access mechanisms are allowed.
+
+
+WHAT THIS TOOL WILL NEVER DO
+----------------------------
+- Modify bucket policies
+- Modify ACLs
+- Guess user intent
+- Run without confirmation
+- Operate in background or on schedule
+
+This is an operator tool, not an automation daemon.
+
+
+ERROR HANDLING
+--------------
+- Errors are explicit and loud
+- AWS errors are surfaced directly
+- Script exits immediately on failure
+- No partial or hidden actions occur
+
+
+WHEN TO USE AWS CONSOLE INSTEAD
+------------------------------
+Use the AWS Console when:
+- Designing bucket policies
+- Hosting static websites
+- Managing complex permissions
+- Auditing ACLs or access logs
+
+Use aws_s3_manager.py when:
+- Inspecting bucket security posture
+- Creating test buckets
+- Uploading simple files
+- Locking down public access quickly
+- Performing controlled deletions
+
+
+FINAL NOTE
+----------
+This tool prioritizes safety, clarity, and intent over speed. If something feels too easy, it is probably unsafe. This script is intentionally conservative.

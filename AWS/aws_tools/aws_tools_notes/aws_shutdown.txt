@@ -1,0 +1,59 @@
+AWS_SHUTDOWN.PY — SYSTEM USAGE GUIDE
+====================================
+
+PURPOSE
+-------
+aws_shutdown.py is a manual, high-governance cleanup tool designed to safely stop or remove explicitly marked, non-production resources across all enabled AWS regions. It serves as the final account protocol to ensure a zero-cost state by catching resources in "blind-spot" regions and cleaning up orphaned infrastructure.
+
+OPERATING PHILOSOPHY
+--------------------
+- Dynamic Discovery: No hard-coded region lists; identifies all enabled regions automatically.
+- Human-in-the-loop: Every batch action requires a unique, manual authorization code.
+- Cost-Centric: Targets both "Active" costs (Instances/Lambdas) and "Passive" costs (Orphaned Volumes/IPs/Logs).
+- Tag Sensitivity: Respects a 'KeepUntil' tag as an optional safety override for persistent resources.
+
+AWS CONTEXT (IMPORTANT)
+-----------------------
+- Account Identity Check: Always performs a verified Account ID and ARN check before proceeding.
+- Multi-Region Scope: Scans all 17+ enabled regions to eliminate surprise bills from forgotten resources.
+- Identity Confirmation: Starts by confirming the user is in the correct profile environment.
+
+COMMAND REFERENCE
+-----------------
+Standard execution (interactive sweep): python aws_shutdown.py
+
+Override profile: python aws_shutdown.py --profile phase1
+
+Dry run mode (Recommended for first sweep): python aws_shutdown.py --dry-run
+
+SUPERVISED WORKFLOW
+-------------------
+
+PHASE A — GLOBAL DISCOVERY (FAST & QUIET)
+- Background scan of all enabled regions.
+- Automatically ignores empty regions to reduce noise.
+- Displays a Global Summary Table of all active/billable resources found.
+
+PHASE B — INTERACTIVE BATCH APPROVALS
+The tool presents findings in logical blocks and waits for unique authorization:
+1. COMPUTE BATCH: (Action: Stop/Delete) | Code: SHUTDOWN-BATCH
+2. ORPHAN BATCH: (Action: Delete/Release Volumes & IPs) | Code: PURGE-ORPHANS
+3. DATABASE BATCH: (Action: Delete DynamoDB Tables) | Code: DELETE-TABLES
+4. S3 LIQUIDATION: (Action: Deep Clean & Delete Buckets) | Code: DELETE-BUCKET
+5. LOG PURGING: (Action: Delete CloudWatch Log Groups) | Code: PURGE-DATA
+
+PHASE C — FINAL ACCOUNT AUDIT
+- Performs a post-cleanup sweep across all identified regions.
+- Generates a final summary report confirming the account is clean.
+- Highlights "Protected" items (tagged with KeepUntil) that were intentionally left.
+
+SAFETY RULES (NON-NEGOTIABLE)
+-----------------------------
+- ❌ No Auto-Pilot: The script never proceeds to a destructive action without user input.
+- ❌ No Tag, No Protection: Resources without a valid 'KeepUntil' tag are considered temporary.
+- ✔ Unique Authorization: Distinct codes for different services prevent repetitive clicking errors.
+- ✔ Identity First: Never run without first confirming you are in the intended AWS Account.
+
+FINAL NOTE
+----------
+This tool acts as your Final Protocol. It prioritizes account hygiene and cost safety by ensuring that no resource is left running unintentionally, while keeping you firmly in control of every deletion.

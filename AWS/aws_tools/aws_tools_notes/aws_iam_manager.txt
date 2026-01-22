@@ -1,0 +1,134 @@
+IAM_MANAGER.PY
+===============================
+
+PURPOSE
+-------
+aws_iam_manager.py is a read-only IAM inspection tool.It provides high-level visibility into IAM structure without exposing credentials or enabling any form of modification.
+
+This tool is designed to answer:
+- Who exists in this AWS account?
+- What roles are present and who can assume them?
+- What customer-managed policies exist?
+- Which policies are unused (orphans)?
+
+It is intentionally conservative and minimal.
+
+
+CORE PHILOSOPHY
+---------------
+- IAM has high blast radius → visibility only
+- No credential inspection
+- No mutation paths
+- No hidden logic
+- Calm, audit-style output
+
+This tool is for understanding IAM structure, not managing it.
+
+
+AWS CONTEXT
+-----------
+- Uses explicit AWS profile: phase1
+- Uses AWS SDK (boto3)
+- Never relies on default credentials
+- Never modifies IAM state
+
+Always verify the AWS profile printed at the top.
+
+
+WHAT THIS TOOL SHOWS
+--------------------
+
+1) IAM USERS
+------------
+For each IAM user in the account:
+- Username
+- Whether console access exists (Yes / No)
+- Number of access keys
+- Number of attached policies (inline + managed)
+- Creation date
+
+Notes:
+- No access key IDs are shown
+- No credential age or last-used data is displayed
+- This avoids credential exposure and misuse
+
+Users listed are ACCOUNT-WIDE, not personal. This is intentional and correct.
+
+
+2) IAM ROLES
+------------
+For each IAM role:
+- Role name
+- Trusted service(s) (who can assume the role)
+- Creation date
+
+This helps understand:
+- Service-to-service access
+- EC2 / Lambda / ECS role usage
+- Cross-account trust (if present)
+
+
+3) CUSTOMER-MANAGED POLICIES
+----------------------------
+Shows:
+- Policy name
+- Attachment count
+- Creation date
+
+Only customer-managed policies are listed. AWS-managed policies are excluded by design.
+
+
+4) ORPHAN POLICIES
+-----------------
+Lists customer-managed policies with:
+- Attachment count = 0
+
+These are often:
+- Old
+- Forgotten
+- Left behind after refactors
+
+This section is informational only. No cleanup is performed here.
+
+
+WHAT THIS TOOL WILL NEVER DO
+----------------------------
+- Create or delete IAM users
+- Modify roles or trust policies
+- Attach or detach policies
+- Rotate or inspect credentials
+- Display access key IDs or secrets
+- Perform any write operation
+
+Even accidental IAM changes are impossible.
+
+
+WHY CREDENTIAL DETAILS ARE EXCLUDED
+-----------------------------------
+Credential age and last-used information is intentionally omitted because:
+- It is security-sensitive
+- It encourages unsafe manual IAM operations
+- IAM credential hygiene should be handled centrally
+- This tool prioritizes structural visibility over enforcement
+
+This keeps the tool safe and non-intrusive.
+
+
+WHEN TO USE AWS CONSOLE OR OTHER TOOLS
+-------------------------------------
+Use AWS Console / IaC when:
+- Creating or modifying IAM entities
+- Managing credentials
+- Editing policies
+- Performing security audits
+
+Use iam_manager.py when:
+- Auditing account IAM structure
+- Understanding role trust relationships
+- Identifying unused customer policies
+- Gaining quick IAM visibility without risk
+
+
+FINAL NOTE
+----------
+IAM is powerful and dangerous. This tool intentionally does less, not more. If something feels missing, it probably belongs in a different tool or a different workflow.

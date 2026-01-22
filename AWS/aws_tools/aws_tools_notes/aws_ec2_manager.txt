@@ -1,0 +1,158 @@
+EC2_MANAGER.PY — OPERATOR NOTES
+==============================
+
+PURPOSE
+-------
+aws_ec2_manager.py is a safe, CLI-based EC2 operator tool. It is designed to replace routine EC2 console usage (start, stop, reboot, terminate) while enforcing strong safety guardrails and explicit user intent.
+
+This tool is NOT for:
+- Creating EC2 instances
+- Designing infrastructure
+- Changing networking, security groups, or IAM
+Those are design-time decisions and should be done via AWS Console or IaC.
+
+This tool IS for:
+- Observing EC2 state
+- Operating existing EC2 instances deliberately and safely
+
+
+OPERATING PHILOSOPHY
+--------------------
+- Read first, act later
+- No hidden defaults
+- No silent actions
+- No batch destructive operations
+- Human-in-the-loop confirmations for all mutations
+- Heavy confirmation for irreversible actions
+
+The script is safer than the AWS Console for day-to-day EC2 operations.
+
+
+AWS CONTEXT (IMPORTANT)
+-----------------------
+- Uses explicit AWS profile: phase1
+- Uses explicit AWS region (configured in the script)
+- Never relies on default credentials
+- Always prints profile and region at startup
+
+Always verify profile and region printed at the top before performing any action.
+
+
+PHASES OVERVIEW
+---------------
+
+PHASE A — READ-ONLY (DEFAULT)
+-----------------------------
+Command: python <path_to>aws_ec2_manager.py
+
+What it does:
+- Lists ALL EC2 instances in the configured account & region
+- Displays key metadata for each instance
+- Makes NO changes to AWS
+
+Displayed fields:
+- Instance ID
+- Name tag (or N/A)
+- State (running / stopped / etc.)
+- Instance type
+- Public IP (if any)
+- Availability Zone
+- Launch time
+
+Summary footer:
+- Total instance count
+- Running instance count
+- Stopped instance count
+
+Use this phase when:
+- You want visibility
+- You want to avoid opening the AWS Console
+- You want to check state before any action
+
+This phase is always safe to run.
+
+
+PHASE B — SAFE ACTIONS
+----------------------
+Supported actions:
+- start
+- stop
+- reboot
+
+Command format: python <path_to>aws_ec2_manager.py <start|stop|reboot> <instance-id>
+
+Behavior:
+- Validates instance exists
+- Validates current state (e.g., won’t stop a stopped instance)
+- Displays instance details
+- Requires explicit YES confirmation
+- Performs action on ONE instance only
+- Prints clear success or failure message
+
+This phase is reversible and safe when used correctly.
+
+
+PHASE C — HIGH-RISK ACTION (TERMINATE)
+-------------------------------------
+Supported action: 
+- terminate
+
+Command format: python <path_to>aws_ec2_manager.py terminate <instance-id>
+
+IMPORTANT:
+- Termination is IRREVERSIBLE
+- This permanently deletes the EC2 instance
+- Attached root volumes may also be deleted
+
+Heavy confirmation flow:
+- Displays strong warning banner
+- Prints instance ID, name, state, type, AZ, launch time
+- Requires typing EXACTLY: TERMINATE <instance-id>
+- Any mismatch cancels the action
+- No shortcuts (YES is NOT accepted)
+
+Never terminate an instance unless you are 100% sure.
+
+
+WHAT THIS SCRIPT WILL NEVER DO
+------------------------------
+- Create EC2 instances
+- Modify security groups
+- Modify VPC or networking
+- Resize instances
+- Perform batch operations
+- Act without confirmation
+- Run in background or on a schedule
+
+This is an operator tool, not an automation daemon.
+
+
+ERROR HANDLING
+--------------
+- Errors are loud and explicit
+- Script exits immediately on fatal issues
+- No partial or silent failures
+- If AWS credentials/profile are invalid, nothing runs
+
+If something fails:
+- Read the message
+- No AWS state is changed unless explicitly confirmed
+
+
+WHEN TO USE AWS CONSOLE INSTEAD
+-------------------------------
+Use AWS Console when:
+- Creating a new EC2 instance
+- Designing networking or security
+- Choosing AMIs and storage
+- Exploring unfamiliar settings
+
+Use aws_ec2_manager.py when:
+- Managing existing instances
+- Avoiding repetitive clicks
+- Wanting safer, more deliberate control
+
+
+FINAL NOTE
+----------
+This tool is intentionally conservative. Friction and confirmations are features, not bugs. Trust is more important than speed.

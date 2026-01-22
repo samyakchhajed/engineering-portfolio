@@ -1,0 +1,122 @@
+AWS_HEALTH_CHECK.PY — SYSTEM USAGE GUIDE
+========================================
+
+PURPOSE
+-------
+aws_health_check.py performs a read-only diagnostic scan of your AWS account and region. It provides visibility into infrastructure health and surfaces critical alerts without performing destructive actions.
+
+This tool is designed for:
+- Validating credentials and CLI setup
+- Verifying permissions (reports AccessDenied messages)
+- Checking region configuration
+- Monitoring basic infrastructure health indicators
+
+This tool is NOT meant for:
+- Changing infrastructure or destructive AWS API calls
+- Automated incident response
+
+
+OPERATING PHILOSOPHY
+--------------------
+- Read-only diagnostics
+- Visibility into compute, storage, and databases
+- Explicit profile usage
+- Safety-first: avoids destructive calls
+
+The script is a diagnostic utility to confirm the account and region are accessible.
+
+
+AWS CONTEXT
+-----------
+- Uses explicit AWS profile: phase1 (default)
+- Uses AWS SDK (boto3), not AWS CLI
+- Session region compared to --expected-region (default: ap-south-1)
+
+Always verify the active identity (Account ID, User ARN) printed at startup.
+
+
+COMMAND REFERENCE
+-----------------
+
+Default execution (from repository root):
+    cd /d D:\Projects
+    .venv\Scripts\activate
+    python <PATH_TO>aws_health_check.py
+
+Common options (current):
+    --profile           - AWS CLI profile (default: phase1)
+    --region            - Override session region
+    --expected-region   - Region to compare against (default: ap-south-1)
+
+Examples:
+    python aws_health_check.py --profile phase1
+    python aws_health_check.py --expected-region ap-south-1
+
+
+SERVICE DETAILS & OUTPUT MEANING
+--------------------------------
+
+IDENTITY & REGION
+- Confirms the active AWS identity and account.
+- Prints session region; warns if it differs from --expected-region.
+
+S3
+- Lists buckets (S3 is global to the account).
+
+EC2
+- Lists instances with InstanceId, State, InstanceType, and public IP. 
+- Running instances are highlighted as worth immediate review.
+
+LAMBDA
+- Lists function names, runtime, and last modified date.
+
+CLOUDWATCH (ALERTS & METRICS)
+- Alarms: Lists alarms currently in 'ALARM' state (critical).
+- Dashboards: Lists dashboards present in the account/region.
+- Metric Samples: 
+    - EC2 CPUUtilization (last 10 minutes)
+    - Lambda Invocations & Errors (last 1 hour)
+    - S3 AllRequests (if enabled)
+- Log Groups: Lists groups accessible to the role/profile.
+
+CLOUDFORMATION
+- Lists stacks and StackStatus.
+- Flags non-COMPLETE states (e.g. ROLLBACK_FAILED, CREATE_FAILED).
+- Prints StackStatusReason where available.
+- Drift detection: Optional operation in code; polled briefly if enabled.
+
+DYNAMODB
+- Table Metadata: Shows TableStatus (expect ACTIVE), ItemCount, and Size.
+- Throughput: Fetches consumed vs. provisioned capacity from CloudWatch.
+- Backups: Shows PITR status and last backup time.
+- Warnings: Alerts if last backup is older than threshold (default: 72 hours).
+
+
+SAFETY RULES (NON-NEGOTIABLE)
+-----------------------------
+- ❌ Never add destructive operations to this script
+- ❌ Never print or save access keys
+- ❌ Avoid running as an elevated admin user unnecessarily
+- ✔ Use --profile to scope credentials
+- ✔ Review AccessDenied messages and attach minimal read-only policies
+
+
+FUTURE EXPANSION / TODOS
+------------------------
+- Add CLI flags for: --cf-run-drift, --ddb-backup-warn-hours, --json
+- Add pagination handling for large accounts
+- Add structured logging into _aws_docs\logs
+
+
+EMERGENCY RECOVERY INSTRUCTIONS
+-------------------------------
+If AWS access breaks:
+1. Delete old access key (IAM console)
+2. Create new access key
+3. Run: aws configure --profile phase1
+4. Re-run: python aws_health_check.py --profile phase1
+
+
+FINAL NOTE
+----------
+This tool helps confirm that key resources are healthy. It prioritizes safety, clarity, and intent over speed.

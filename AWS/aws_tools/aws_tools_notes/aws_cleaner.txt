@@ -1,0 +1,81 @@
+AWS_CLEANER.PY — OPERATOR NOTES
+===============================
+
+PURPOSE
+-------
+aws_cleaner.py is a read-only hygiene and reasoning tool designed to analyze AWS resources more deeply than a standard health check. It adds time-based context to help identify resources that may have been forgotten or are no longer serving an intentional purpose.
+
+This tool is designed for:
+- Identifying "zombie" resources (stopped EC2s, empty S3 buckets) 
+- Highlighting hygiene risks like missing CloudWatch log retention 
+- Providing age-based signals to inform manual cleanup decisions 
+- Reducing mental load by answering: “Is this still intentional?” 
+
+This tool is NOT for:
+- Deleting, stopping, or modifying resources 
+- Calculating costs or making automated decisions 
+- Replacing manager scripts (S3/EC2) or the AWS Console 
+
+
+OPERATING PHILOSOPHY
+--------------------
+- Reasoning over Reporting: It provides "signals," not just raw data 
+- Strictly Read-Only: No destructive or mutative actions are implemented 
+- Age-Based Context: Focuses on how long a resource has existed or been idle
+- Complements, doesn't duplicate: Goes deeper than aws_health_check.py 
+
+Analysis should lead to human-driven intent, not blind automation.
+
+
+AWS CONTEXT
+-----------
+- Uses explicit AWS profile: phase1 
+- Uses AWS SDK (boto3) for resource metadata retrieval
+- Enforces service-specific thresholds to flag "old" or "forgotten" items
+
+
+HYGIENE THRESHOLDS (CONFIGURABLE)
+---------------------------------
+- EC2: 2 Days (Aggressive; EC2 should be treated as disposable)
+- S3: 30 Days (Moderate; allows for project lifecycle survival)
+- CloudWatch: 7 Days (Weekly; ensures retention policies are applied)
+
+
+REASONING SIGNALS EXPLAINED
+---------------------------
+
+EC2 SIGNALS
+- OK: Running or Stopped within the threshold
+- DISCIPLINE ALERT: Running longer than the threshold (Potential cost leak)
+- COST RISK: Stopped longer than the threshold (Consuming EBS storage unnecessarily)
+
+S3 SIGNALS
+- OK: Contains data or is newly created
+- IDLE: Empty but created within the threshold
+- ABANDONED: Empty and older than the threshold (High confidence for deletion)
+
+CLOUDWATCH SIGNALS
+- OK: Specific retention period is set
+- HYGIENE RISK: "Never Expire" (Logs will grow indefinitely, increasing costs)
+
+
+WHAT THIS SCRIPT WILL NEVER DO
+------------------------------
+- Delete or terminate any resource 
+- Automatically empty buckets or remove logs 
+- Guess user intent without providing the data first 
+- Run on a schedule or as a background daemon 
+
+
+WHEN TO ACT ON CLEANER SIGNALS
+------------------------------
+The output of aws_cleaner.py is a signal for review. Use your manager scripts to act when:
+- Multiple regions are being used and resources are drifting 
+- Long gaps occur between AWS usage sessions 
+- You no longer remember the specific intent of a resource
+- Costs or hygiene risks are highlighted as "High" or "Risk"
+
+
+FINAL NOTE
+----------
+This tool prioritizes memory and reasoning over speed. If a resource is flagged, it is an engineering decision to decide whether to keep it or use the appropriate manager script to remove it.
