@@ -1,0 +1,16 @@
+# Notes (never upload)
+**/Notes/
+Common Notes/
+
+# Virtual environments
+.venv/
+**/.venv/
+
+# Docs not for portfolio (can change later)
+*.docx
+
+# OS / editor
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
